@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>国家運営ツール</title>
+<style>
+:root{
+  --bg:#f6f3ee; --panel:#ffffff; --ink:#2b2620; --sub:#7a7167;
+  --accent:#8a5a3f; --accent2:#3f6a5a; --line:#e4ddd2; --danger:#a34a3f;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1c1a17; --panel:#26231f; --ink:#eee8de; --sub:#b0a495;
+    --accent:#d69468; --accent2:#7fb8a2; --line:#3a352e; --danger:#e08a7d;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1c1a17; --panel:#26231f; --ink:#eee8de; --sub:#b0a495;
+  --accent:#d69468; --accent2:#7fb8a2; --line:#3a352e; --danger:#e08a7d;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px); height:100%;}
+*{box-sizing:border-box;}
+body{
+  margin:0; min-height:100%; background:var(--bg); color:var(--ink);
+  font-family:"Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  padding:14px 12px 40px;
+}
+h1{font-size:1.15rem; margin:4px 2px 2px; font-weight:700;}
+.sub{color:var(--sub); font-size:.8rem; margin:0 2px 14px;}
+nav{display:flex; gap:6px; overflow-x:auto; padding-bottom:8px; margin-bottom:14px; border-bottom:1px solid var(--line);}
+nav button{
+  flex:0 0 auto; background:none; border:none; color:var(--sub); font-size:.82rem;
+  padding:8px 10px; border-radius:8px 8px 0 0; cursor:pointer; white-space:nowrap;
+}
+nav button.active{color:var(--accent); background:var(--panel); font-weight:700;}
+.panel{display:none;}
+.panel.active{display:block;}
+.card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:12px;}
+.card h2{font-size:.95rem; margin:0 0 10px;}
+.row{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; align-items:center;}
+label{font-size:.78rem; color:var(--sub); display:block; margin-bottom:3px;}
+.field{flex:1 1 120px; min-width:100px;}
+input,select{
+  width:100%; padding:8px; border:1px solid var(--line); border-radius:8px;
+  background:var(--bg); color:var(--ink); font-size:.9rem;
+}
+button.act{
+  background:var(--accent); color:#fff; border:none; border-radius:8px;
+  padding:9px 14px; font-size:.85rem; cursor:pointer; font-weight:600;
+}
+button.act.sec{background:var(--accent2);}
+button.small{padding:5px 9px; font-size:.75rem; border-radius:6px;}
+.result{
+  margin-top:10px; padding:10px 12px; border-radius:8px; background:var(--bg);
+  border:1px dashed var(--line); font-size:.88rem; line-height:1.7;
+}
+.result b{color:var(--accent); font-size:1.05em;}
+.hint{font-size:.72rem; color:var(--sub); margin-top:6px;}
+table{width:100%; border-collapse:collapse; font-size:.8rem;}
+th,td{text-align:left; padding:6px 4px; border-bottom:1px solid var(--line);}
+th{color:var(--sub); font-weight:600;}
+.overflow{overflow-x:auto;}
+.chip{display:inline-block; background:var(--bg); border:1px solid var(--line); border-radius:20px; padding:2px 8px; font-size:.7rem; color:var(--sub);}
+.empty{color:var(--sub); font-size:.82rem; padding:8px 2px;}
+.checkrow{display:flex; gap:14px; flex-wrap:wrap; margin-bottom:8px;}
+.checkrow label{display:flex; align-items:center; gap:5px; font-size:.8rem; color:var(--ink);}
+.checkrow input[type=checkbox]{width:auto;}
+</style>
+</head>
+<body>
+<h1>国家運営ツール</h1>
+<p class="sub">国家なりきりオープンチャット用 — ニュース・区画ポイント・戦争・軍隊・生産・週次収益</p>
+
+<nav id="tabnav"></nav>
+
+<div id="panel-news" class="panel">
+  <div class="card">
+    <h2>情勢ニュースを投稿</h2>
+    <div class="row">
+      <div class="field"><label>見出し</label><input id="n-title" placeholder="例: ベリーズ、周辺国と防衛協定を締結"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>投稿者・国家名など(任意)</label><input id="n-author" placeholder="例: ベリーズ通信社"></div>
+    </div>
+    <div class="row">
+      <div class="field" style="flex-basis:100%;">
+        <label>本文</label>
+        <textarea id="n-body" rows="4" placeholder="ニュース本文を自由に入力してください" style="width:100%; padding:8px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); font-size:.9rem; font-family:inherit; resize:vertical;"></textarea>
+      </div>
+    </div>
+    <button class="act" onclick="postNews()">投稿する</button>
+    <p class="hint">投稿すると全参加者にすぐ共有されます。誰でも自由に投稿できます。</p>
+  </div>
+  <div class="card">
+    <h2>ニュース一覧 <button class="act small sec" style="float:right;" onclick="loadNews()">更新</button></h2>
+    <div id="news-list"><p class="empty">読み込み中…</p></div>
+  </div>
+</div>
+
+<div id="panel-zone" class="panel">
+  <div class="card">
+    <h2>区画ポイント計算</h2>
+    <div class="row">
+      <div class="field"><label>面積(km²)</label><input id="z-area" type="number" placeholder="例: 50000"></div>
+    </div>
+    <button class="act" onclick="calcZone()">計算</button>
+    <div class="result" id="z-result">面積を入力してください。</div>
+    <p class="hint">区画ポイント = 面積÷78500×300(四捨五入)。100未満は一律100pt。</p>
+  </div>
+</div>
+
+<div id="panel-war" class="panel">
+  <div class="card">
+    <h2>占領・区画防衛 コスト計算</h2>
+    <div class="row">
+      <div class="field"><label>基準ポイント(区画ポイント)</label><input id="w-base" type="number" placeholder="例: 300"></div>
+    </div>
+    <div class="checkrow">
+      <label><input type="checkbox" id="w-mini"> 極小国特例(相手の第一行政区画が2つ以下 → 1区画1500pt)</label>
+    </div>
+    <div class="row">
+      <div class="field"><label>陸軍配分(0-10)</label><input id="w-land" type="number" value="0"></div>
+      <div class="field"><label>海軍配分(0-10)</label><input id="w-sea" type="number" value="0"></div>
+      <div class="field"><label>空軍配分(0-10)</label><input id="w-air" type="number" value="0"></div>
+    </div>
+    <div class="checkrow">
+      <label><input type="checkbox" id="w-landroute" checked> 陸路のみで到達可能</label>
+      <label><input type="checkbox" id="w-searoute"> 海路を通る</label>
+    </div>
+    <button class="act" onclick="calcWar()">計算</button>
+    <div class="result" id="w-result">数値を入力してください。</div>
+    <p class="hint">陸: 配分÷5×100pt減、海: 配分÷5×90pt減(海路を通る場合のみ)、空: 配分÷5×20pt減(常時)。使用ポイントは最低10ptまでしか下がりません。相手が区画防衛している場合は双方の使用ポイントを比較してください。</p>
+  </div>
+</div>
+
+<div id="panel-army" class="panel">
+  <div class="card">
+    <h2>① 有料配分(合計上限10・維持費あり)</h2>
+    <div class="row">
+      <div class="field"><label>陸軍配分</label><input id="a-land" type="number" value="0"></div>
+      <div class="field"><label>海軍配分</label><input id="a-sea" type="number" value="0"></div>
+      <div class="field"><label>空軍配分</label><input id="a-air" type="number" value="0"></div>
+    </div>
+    <button class="act" onclick="calcArmy()">維持費を計算</button>
+    <div class="result" id="a-result">配分を入力してください。</div>
+    <p class="hint">毎週土曜、(陸+海+空の合計配分)×50ptが維持費として引かれます。合計は最大10。</p>
+  </div>
+  <div class="card">
+    <h2>② 保有装備による無料加算(上限なし・維持費なし)</h2>
+    <div class="row">
+      <div class="field"><label>大型船</label><input id="a-big" type="number" value="0"></div>
+      <div class="field"><label>中型船</label><input id="a-mid" type="number" value="0"></div>
+      <div class="field"><label>小型船</label><input id="a-small" type="number" value="0"></div>
+      <div class="field"><label>武器保有数</label><input id="a-weapon" type="number" value="0"></div>
+    </div>
+    <button class="act sec" onclick="calcFree()">加算分を計算</button>
+    <div class="result" id="a-free-result">保有数を入力してください。</div>
+    <p class="hint">大型船×3・中型船×2・小型船×1を海軍へ、武器×2を陸軍へ、武器×1を空軍へ、①の配分上限10とは別に無料で加算できます(維持費もかかりません)。</p>
+  </div>
+  <div class="card">
+    <h2>③ 合計(①+②) — 占領/防衛計算に使う数値</h2>
+    <button class="act" onclick="calcTotalArmy()">合計を計算</button>
+    <div class="result" id="a-total-result">①と②を入力・計算してから押してください。</div>
+    <p class="hint">「占領/防衛」タブの陸・海・空配分には、この合計値を入力してください。なお使用ポイントの下限10ptは、この合計を使った占領/防衛コスト計算のほうの制約であり、①②の配分自体には上限・下限はありません(①のみ合計10の上限あり)。</p>
+  </div>
+</div>
+
+<div id="panel-prod" class="panel">
+  <div class="card">
+    <h2>生産計算</h2>
+    <div class="row">
+      <div class="field">
+        <label>生産種別</label>
+        <select id="p-type" onchange="updateProdHint()">
+          <option value="weapon">武器(工場250pt)</option>
+          <option value="bigship">大型船(工場350pt)</option>
+          <option value="midship">中型船(工場350pt)</option>
+          <option value="smallship">小型船(工場350pt)</option>
+          <option value="food">食品類(工場50pt)</option>
+          <option value="car">自動車(工場50pt)</option>
+          <option value="other">その他物品(工場50pt)</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field"><label>所有工場数</label><input id="p-factory" type="number" value="0"></div>
+      <div class="field"><label>使用ポイント</label><input id="p-points" type="number" value="0"></div>
+    </div>
+    <button class="act" onclick="calcProd()">計算</button>
+    <div class="result" id="p-result">工場数と使用ポイントを入力してください。</div>
+    <p class="hint" id="p-hint"></p>
+  </div>
+</div>
+
+<div id="panel-income" class="panel">
+  <div class="card">
+    <h2>週次 保有・企業 収益</h2>
+    <div class="row">
+      <div class="field"><label>大型船数</label><input id="i-big" type="number" value="0"></div>
+      <div class="field"><label>中型船数</label><input id="i-mid" type="number" value="0"></div>
+      <div class="field"><label>小型船数</label><input id="i-small" type="number" value="0"></div>
+      <div class="field"><label>食品類数</label><input id="i-food" type="number" value="0"></div>
+      <div class="field"><label>自動車数</label><input id="i-car" type="number" value="0"></div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>企業規模(保有時)</label>
+        <select id="i-corp">
+          <option value="0">なし</option>
+          <option value="50">世界的大企業(+50pt)</option>
+          <option value="25">大企業(+25pt)</option>
+          <option value="2">中企業(+2pt)</option>
+        </select>
+      </div>
+    </div>
+    <button class="act" onclick="calcIncome()">計算</button>
+    <div class="result" id="i-result">保有数を入力してください。</div>
+    <p class="hint">大型船50pt・中型船25pt・小型船5pt・食品1pt・自動車2pt(1つあたり) + 企業規模による収益。毎週土曜・申請必須。</p>
+  </div>
+</div>
+
+<script>
+/* ---------- tabs ---------- */
+const tabs=[["news","ニュース"],["zone","区画pt"],["war","占領/防衛"],["army","軍隊"],["prod","生産"],["income","週次収益"]];
+const nav=document.getElementById("tabnav");
+tabs.forEach(([id,label],i)=>{
+  const b=document.createElement("button");
+  b.textContent=label; b.onclick=()=>showTab(id);
+  b.id="nav-"+id; if(i===0)b.classList.add("active");
+  nav.appendChild(b);
+});
+function showTab(id){
+  tabs.forEach(([tid])=>{
+    document.getElementById("panel-"+tid).classList.toggle("active",tid===id);
+    document.getElementById("nav-"+tid).classList.toggle("active",tid===id);
+  });
+}
+showTab("news");
+
+/* ---------- helpers ---------- */
+const r5=n=>Math.round((n+Number.EPSILON)*100000)/100000;
+const fmt=n=>Number.isFinite(n)?r5(n).toLocaleString("ja-JP"):"-";
+
+/* ---------- zone points ---------- */
+function zonePoints(area){
+  if(!(area>0)) return 0;
+  const raw=Math.round(area/78500*300);
+  return raw<100?100:raw;
+}
+function calcZone(){
+  const area=parseFloat(document.getElementById("z-area").value);
+  if(!(area>0)){document.getElementById("z-result").textContent="面積を正しく入力してください。";return;}
+  document.getElementById("z-result").innerHTML=`区画ポイント: <b>${fmt(zonePoints(area))} pt</b>`;
+}
+
+/* ---------- war cost ---------- */
+function calcWar(){
+  const base=parseFloat(document.getElementById("w-base").value)||0;
+  const mini=document.getElementById("w-mini").checked;
+  const land=parseFloat(document.getElementById("w-land").value)||0;
+  const sea=parseFloat(document.getElementById("w-sea").value)||0;
+  const air=parseFloat(document.getElementById("w-air").value)||0;
+  const landroute=document.getElementById("w-landroute").checked;
+  const searoute=document.getElementById("w-searoute").checked;
+  let start = mini ? 1500 : base;
+  let reduction=0;
+  if(landroute) reduction += land/5*100;
+  if(searoute) reduction += sea/5*90;
+  reduction += air/5*20;
+  let final = start - reduction;
+  if(final < 10) final = 10;
+  document.getElementById("w-result").innerHTML =
+    `基準ポイント: <b>${fmt(start)} pt</b><br>軍隊による減額: <b>${fmt(reduction)} pt</b><br>最終 必要ポイント: <b>${fmt(final)} pt</b>`;
+}
+
+/* ---------- army maintenance ---------- */
+function calcArmy(){
+  const land=parseFloat(document.getElementById("a-land").value)||0;
+  const sea=parseFloat(document.getElementById("a-sea").value)||0;
+  const air=parseFloat(document.getElementById("a-air").value)||0;
+  const total=land+sea+air;
+  const cost=total*50;
+  document.getElementById("a-result").innerHTML=
+    `合計配分: <b>${fmt(total)}</b> / 10<br>毎週土曜の維持費: <b>${fmt(cost)} pt</b>`;
+}
+function calcFree(){
+  const big=parseFloat(document.getElementById("a-big").value)||0;
+  const mid=parseFloat(document.getElementById("a-mid").value)||0;
+  const small=parseFloat(document.getElementById("a-small").value)||0;
+  const weapon=parseFloat(document.getElementById("a-weapon").value)||0;
+  const navy=big*3+mid*2+small;
+  const armyLand=weapon*2;
+  const armyAir=weapon;
+  document.getElementById("a-free-result").innerHTML=
+    `無料加算 海軍: <b>${fmt(navy)}</b><br>無料加算 陸軍: <b>${fmt(armyLand)}</b><br>無料加算 空軍: <b>${fmt(armyAir)}</b>`;
+}
+function calcTotalArmy(){
+  const land=(parseFloat(document.getElementById("a-land").value)||0) + (parseFloat(document.getElementById("a-weapon").value)||0)*2;
+  const sea=(parseFloat(document.getElementById("a-sea").value)||0) + (parseFloat(document.getElementById("a-big").value)||0)*3 + (parseFloat(document.getElementById("a-mid").value)||0)*2 + (parseFloat(document.getElementById("a-small").value)||0);
+  const air=(parseFloat(document.getElementById("a-air").value)||0) + (parseFloat(document.getElementById("a-weapon").value)||0);
+  document.getElementById("a-total-result").innerHTML=
+    `合計 陸軍: <b>${fmt(land)}</b><br>合計 海軍: <b>${fmt(sea)}</b><br>合計 空軍: <b>${fmt(air)}</b>`;
+}
+
+/* ---------- production ---------- */
+const prodRules={
+  weapon:{label:"武器",factoryCost:250,mult:p=>p/2,resPer:10},
+  bigship:{label:"大型船",factoryCost:350,mult:p=>p/20,resPer:150},
+  midship:{label:"中型船",factoryCost:350,mult:p=>p/10,resPer:100},
+  smallship:{label:"小型船",factoryCost:350,mult:p=>p/5,resPer:50},
+  food:{label:"食品類",factoryCost:50,mult:p=>p/10,resPer:1},
+  car:{label:"自動車",factoryCost:50,mult:p=>p/10,resPer:5},
+  other:{label:"その他物品",factoryCost:50,mult:p=>p/10,resPer:3},
+};
+function updateProdHint(){
+  const t=prodRules[document.getElementById("p-type").value];
+  document.getElementById("p-hint").textContent=
+    `工場1つ ${t.factoryCost}pt。生産量=工場数×(使用ポイント÷係数)。使用資源量は生産1つあたり${t.resPer}(武器・自動車・その他物品は金属資源、食品は農産物資源、船は金属資源)。生産ごとにエネルギー資源1消費。`;
+}
+updateProdHint();
+function calcProd(){
+  const key=document.getElementById("p-type").value;
+  const t=prodRules[key];
+  const factory=parseFloat(document.getElementById("p-factory").value)||0;
+  const pts=parseFloat(document.getElementById("p-points").value)||0;
+  const amount=factory*t.mult(pts);
+  const resource=amount*t.resPer;
+  document.getElementById("p-result").innerHTML=
+    `${t.label} 生産量: <b>${fmt(amount)}</b><br>必要資源量: <b>${fmt(resource)}</b><br>消費エネルギー資源: <b>${fmt(amount)}</b>`;
+}
+
+/* ---------- weekly holding/company income ---------- */
+function calcIncome(){
+  const big=parseFloat(document.getElementById("i-big").value)||0;
+  const mid=parseFloat(document.getElementById("i-mid").value)||0;
+  const small=parseFloat(document.getElementById("i-small").value)||0;
+  const food=parseFloat(document.getElementById("i-food").value)||0;
+  const car=parseFloat(document.getElementById("i-car").value)||0;
+  const corp=parseFloat(document.getElementById("i-corp").value)||0;
+  const total=big*50+mid*25+small*5+food*1+car*2+corp;
+  document.getElementById("i-result").innerHTML=`週次収益 合計: <b>${fmt(total)} pt</b>`;
+}
+
+/* ---------- shared news feed via jsonblob.com (登録不要の無料JSON保存サービス) ---------- */
+/* ▼ 初回だけ空のまま実行すると自動でIDが発行されます。発行されたIDをここに書き写して、
+   全員に配るファイルにはそのIDを入れた状態で配布してください ▼ */
+const NEWS_BLOB_ID = "";
+const JSONBLOB_BASE = "https://jsonblob.com/api/jsonBlob";
+let blobId = NEWS_BLOB_ID;
+let pollTimer = null;
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+async function initDb(){
+  if(!blobId){
+    try{
+      const res = await fetch(JSONBLOB_BASE, {
+        method:"POST",
+        headers:{"Content-Type":"application/json","Accept":"application/json"},
+        body: JSON.stringify({items:[]})
+      });
+      if(!res.ok) throw new Error("作成に失敗しました(status "+res.status+")");
+      const loc = res.headers.get("Location") || res.headers.get("location") || "";
+      blobId = loc.split("/").filter(Boolean).pop();
+      if(!blobId) throw new Error("IDを取得できませんでした");
+      document.getElementById("news-list").innerHTML =
+        `<div class="card">
+          <p><b>初回セットアップ:</b> 共有ニュース用のIDが発行されました。</p>
+          <p style="word-break:break-all; background:var(--bg); padding:8px; border-radius:6px;">const NEWS_BLOB_ID = "${blobId}";</p>
+          <p class="hint">HTMLファイル内の <code>const NEWS_BLOB_ID = "";</code> をこの1行に書き換えてから、全員にファイルを配ってください。書き換えないと、開く人ごとに別々のニュース欄になってしまいます。</p>
+        </div>`;
+    }catch(e){
+      document.getElementById("news-list").innerHTML = '<p class="empty">共有データの初期化に失敗しました: '+escapeHtml(e.message)+'</p>';
+      return;
+    }
+  }
+  await loadNews();
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(loadNews, 8000);
+}
+
+async function loadNews(){
+  if(!blobId) return;
+  try{
+    const res = await fetch(JSONBLOB_BASE+"/"+blobId, {headers:{"Accept":"application/json"}});
+    if(!res.ok) throw new Error("読み込みエラー(status "+res.status+")");
+    const data = await res.json();
+    renderNews((data && data.items) || []);
+  }catch(e){
+    document.getElementById("news-list").innerHTML = '<p class="empty">読み込みに失敗しました: '+escapeHtml(e.message)+'</p>';
+  }
+}
+
+function renderNews(list){
+  const el=document.getElementById("news-list");
+  if(!list.length){ el.innerHTML='<p class="empty">まだニュースが投稿されていません。</p>'; return; }
+  const sorted = [...list].sort((a,b)=> new Date(b.createdAt||0) - new Date(a.createdAt||0));
+  el.innerHTML = sorted.map(n=>{
+    const d = n.createdAt ? new Date(n.createdAt) : null;
+    const dateStr = d ? d.toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}) : "";
+    return `<div class="card" style="margin-bottom:10px;">
+      <div class="row" style="justify-content:space-between; margin-bottom:4px;">
+        <span class="chip">${escapeHtml(n.author||"匿名")}</span>
+        <span class="chip">${dateStr}</span>
+      </div>
+      <h2 style="margin:2px 0 6px;">${escapeHtml(n.title||"(無題)")}</h2>
+      <div style="font-size:.86rem; line-height:1.7; white-space:pre-wrap;">${escapeHtml(n.body||"")}</div>
+    </div>`;
+  }).join("");
+}
+
+async function postNews(){
+  const title=document.getElementById("n-title").value.trim();
+  const author=document.getElementById("n-author").value.trim();
+  const body=document.getElementById("n-body").value.trim();
+  if(!title && !body){ alert("見出しか本文のどちらかは入力してください。"); return; }
+  if(!blobId){ alert("共有データが未初期化です。ページを再読み込みしてください。"); return; }
+  try{
+    const res = await fetch(JSONBLOB_BASE+"/"+blobId, {headers:{"Accept":"application/json"}});
+    const data = res.ok ? await res.json() : {items:[]};
+    const items = data.items || [];
+    items.push({title, author, body, createdAt:new Date().toISOString()});
+    const putRes = await fetch(JSONBLOB_BASE+"/"+blobId, {
+      method:"PUT",
+      headers:{"Content-Type":"application/json","Accept":"application/json"},
+      body: JSON.stringify({items})
+    });
+    if(!putRes.ok) throw new Error("保存エラー(status "+putRes.status+")");
+    document.getElementById("n-title").value="";
+    document.getElementById("n-author").value="";
+    document.getElementById("n-body").value="";
+    loadNews();
+  }catch(e){
+    alert("投稿に失敗しました: "+(e&&e.message||e));
+  }
+}
+initDb();
+</script>
+</body>
+</html>
